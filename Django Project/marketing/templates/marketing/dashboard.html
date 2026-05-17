@@ -17,7 +17,7 @@
             class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 font-bold"
             >+ New Prediction</a
           >
-          <!-- <form
+          <form
             action="{% url 'dashboard' %}"
             method="post"
             enctype="multipart/form-data"
@@ -39,10 +39,10 @@
             >
               Import CSV
             </button>
-          </form> -->
+          </form>
         </div>
       </div>
-<!-- 
+
       {% if import_message %}
       <div
         class="mb-4 rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-800"
@@ -75,7 +75,7 @@
           {% endfor %}
         </ul>
       </div>
-      {% endif %} -->
+      {% endif %}
 
       <form action="{% url 'dashboard' %}" method="post" id="bulk-delete-form">
         {% csrf_token %}
@@ -83,14 +83,14 @@
           class="flex items-center justify-between p-4 border-b border-gray-200"
         >
           <div></div>
-          <!-- <button
+          <button
             type="submit"
             name="delete_selected"
             value="1"
             class="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 font-bold"
           >
             Delete Selected
-          </button> -->
+          </button>
         </div>
         <div class="bg-white rounded-lg shadow overflow-hidden">
           <table class="min-w-full divide-y divide-gray-200">

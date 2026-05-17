@@ -227,7 +227,7 @@ def dashboard_view(request):
                         delete_errors.append(f'Selected row {index} (id={id_value}): {exc}')
                 delete_message = f'{deleted_count} selected record(s) deleted.'
 
-    predictions = CustomerPrediction.objects.all().order_by('-created_at')
+    predictions = CustomerPrediction.objects.all().order_by('created_at')
     return render(request, 'marketing/dashboard.html', {
         'predictions': predictions,
         'import_message': import_message,
