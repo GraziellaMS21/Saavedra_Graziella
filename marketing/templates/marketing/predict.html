@@ -1,0 +1,271 @@
+<!-- marketing/templates/marketing/predict.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marketing SVM Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen font-sans text-gray-800 pb-12">
+    <div class="max-w-5xl mx-auto pt-10 px-4 sm:px-6 lg:px-8">
+      <div class="mb-8 text-center">
+        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">
+          Campaign Response Predictor
+        </h1>
+        <p class="mt-2 text-gray-600">
+          Enter customer details to predict their likelihood of responding to
+          the campaign.
+        </p>
+      </div>
+
+      <!-- with db -->
+      <div class="mb-4 text-left">
+        <a href="{% url 'dashboard' %}" class="text-blue-600 hover:underline"
+          >&larr; Back to Dashboard</a
+        >
+      </div>
+      <!--  -->
+      <div
+        class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200"
+      >
+        {% if error_message %}
+        <div class="p-6 bg-red-50 border-b border-red-200">
+          <h3 class="text-lg font-bold text-red-900">Error Occurred</h3>
+          <p class="text-md font-medium mt-1 text-red-700">
+            {{ error_message }}
+          </p>
+        </div>
+        {% endif %}
+
+        <form method="POST" id="prediction-form" class="p-8 space-y-8">
+          {% csrf_token %}
+
+          <!-- SECTION 1: Demographics & Account -->
+          <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h3
+              class="text-lg font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2"
+            >
+              1. Demographics & Account
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Age</label
+                >{{ form.Age }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Income</label
+                >{{ form.Income }}
+              </div>
+
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Tenure (Days)</label
+                >
+                {{ form.Tenure_Days }}
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 2: Spending -->
+          <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h3
+              class="text-lg font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2"
+            >
+              2. Spending Amounts
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Wines</label
+                >{{ form.MntWines }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Fruits</label
+                >{{ form.MntFruits }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Meat</label
+                >{{ form.MntMeatProducts }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Fish</label
+                >{{ form.MntFishProducts }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Sweets</label
+                >{{ form.MntSweetProducts }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Gold</label
+                >{{ form.MntGoldProds }}
+              </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-gray-300">
+              <label class="block text-sm font-bold text-green-700 mb-1"
+                >Total Amount Spent (Auto-Calculated)</label
+              >
+              {{ form.Total_Spent }}
+            </div>
+          </div>
+
+          <!-- SECTION 3: Purchasing Behavior -->
+          <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h3
+              class="text-lg font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2"
+            >
+              3. Purchasing Behavior & History
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Catalog Purchases</label
+                >{{ form.NumCatalogPurchases }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Store Purchases</label
+                >{{ form.NumStorePurchases }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Web Visits / Month</label
+                >{{ form.NumWebVisitsMonth }}
+              </div>
+            </div>
+
+            <div
+              class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-300"
+            >
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Recency (Days since last purchase)</label
+                >
+                {{ form.Recency }}
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1"
+                  >Previous Campaigns Accepted</label
+                >
+                {{ form.Prev_Campaigns }}
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 flex justify-end">
+            <button
+              type="submit"
+              id="submit-btn"
+              class="inline-flex items-center justify-center py-3 px-8 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 w-full md:w-auto"
+            >
+              <!-- <span id="btn-text">Run Prediction</span> -->
+              <!-- with db -->
+              <span id="btn-text"
+                >{% if is_edit %}Update Prediction{% else %}Run Prediction{% endif %}</span
+              >
+              <svg
+                id="btn-spinner"
+                class="hidden animate-spin ml-3 h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Apply styling to all number and text inputs uniformly
+        const inputs = document.querySelectorAll(
+          'form input[type="number"], form input[type="text"]',
+        );
+        inputs.forEach((input) => {
+          input.classList.add(
+            "block",
+            "w-full",
+            "rounded-md",
+            "border-gray-300",
+            "shadow-sm",
+            "focus:border-blue-500",
+            "focus:ring-blue-500",
+            "sm:text-sm",
+            "p-2.5",
+            "border",
+            "bg-white",
+          );
+        });
+
+        // Logic to handle Total Amount Spent calculation dynamically
+        const spendFields = [
+          "id_MntWines",
+          "id_MntFruits",
+          "id_MntMeatProducts",
+          "id_MntFishProducts",
+          "id_MntSweetProducts",
+          "id_MntGoldProds",
+        ];
+        const totalField = document.getElementById("id_Total_Spent");
+
+        if (totalField) {
+          totalField.readOnly = true;
+          totalField.classList.add(
+            "bg-green-100",
+            "cursor-not-allowed",
+            "font-bold",
+            "text-green-800",
+          );
+
+          function updateTotal() {
+            let sum = 0;
+            spendFields.forEach((id) => {
+              const el = document.getElementById(id);
+              if (el && el.value) sum += parseFloat(el.value) || 0;
+            });
+            totalField.value = sum;
+          }
+
+          spendFields.forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener("input", updateTotal);
+          });
+        }
+
+        // Handle submission button spinner state
+        const form = document.getElementById("prediction-form");
+        const btn = document.getElementById("submit-btn");
+
+        form.addEventListener("submit", function () {
+          btn.disabled = true;
+          btn.classList.add("opacity-75", "cursor-not-allowed");
+          document.getElementById("btn-text").innerText = "Calculating...";
+          document.getElementById("btn-spinner").classList.remove("hidden");
+        });
+      });
+    </script>
+  </body>
+</html>
