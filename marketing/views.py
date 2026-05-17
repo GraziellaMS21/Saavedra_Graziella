@@ -85,6 +85,8 @@
 
 # with database
 # marketing/views.py
+import csv
+import io
 import os
 import joblib
 import pandas as pd
@@ -92,6 +94,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 from .forms import MarketingPredictionForm
 from .models import CustomerPrediction
+from .ml_utils import predict_result
 
 # 1. Define paths to your models (Update these filenames if yours are different!)
 MODEL_DIR = os.path.join(settings.BASE_DIR, 'marketing', 'ml_models')
@@ -110,10 +113,128 @@ try:
 except FileNotFoundError as e:
     print(f"WARNING: ML files missing. {e}")
 
+
+def normalize_field_name(name: str) -> str:
+    return name.strip().lower().replace(' ', '').replace('-', '').replace('.', '')
+
+
+def coerce_value(field, value):
+    if value is None or value == '':
+        return None
+
+    internal_type = field.get_internal_type()
+    if internal_type in ('IntegerField', 'BigIntegerField', 'SmallIntegerField', 'PositiveIntegerField', 'PositiveSmallIntegerField'):
+        return int(value)
+    if internal_type in ('FloatField', 'DecimalField'):
+        return float(value)
+    if internal_type in ('BooleanField', 'NullBooleanField'):
+        return value.lower() in ('1', 'true', 'yes', 'on')
+    return value
+
+
 def dashboard_view(request):
-    """Shows the table of all saved predictions."""
+    """Shows the table of all saved predictions and handles CSV import and bulk delete."""
+    import_message = None
+    import_errors = []
+    delete_message = None
+    delete_errors = []
+
+    if request.method == 'POST':
+        if 'csv_file' in request.FILES:
+            csv_file = request.FILES.get('csv_file')
+            if csv_file is None:
+                import_errors.append('Please upload a CSV file to import.')
+            else:
+                try:
+                    decoded = csv_file.read().decode('utf-8-sig')
+                    reader = csv.DictReader(io.StringIO(decoded))
+
+                    if reader.fieldnames is None:
+                        raise ValueError('CSV file appears to be empty or malformed.')
+
+                    model_fields = {
+                        field.name: field
+                        for field in CustomerPrediction._meta.get_fields()
+                        if getattr(field, 'concrete', False) and not field.auto_created
+                    }
+                    field_map = {normalize_field_name(name): name for name in model_fields}
+                    field_map['id'] = 'id'
+
+                    created = 0
+                    updated = 0
+                    skipped = 0
+
+                    for row_number, row in enumerate(reader, start=1):
+                        if not any(value and value.strip() for value in row.values() if value is not None):
+                            skipped += 1
+                            continue
+
+                        normalized_row = {
+                            field_map.get(normalize_field_name(key), key): value.strip()
+                            for key, value in row.items()
+                            if value is not None and value.strip() != ''
+                        }
+
+                        try:
+                            is_new = True
+                            if 'id' in normalized_row:
+                                try:
+                                    record = CustomerPrediction.objects.get(pk=int(normalized_row['id']))
+                                    is_new = False
+                                except (CustomerPrediction.DoesNotExist, ValueError):
+                                    record = CustomerPrediction()
+                            else:
+                                record = CustomerPrediction()
+
+                            for field_name, field in model_fields.items():
+                                if field_name in ('prediction_result', 'created_at'):
+                                    continue
+                                if field_name in normalized_row:
+                                    setattr(record, field_name, coerce_value(field, normalized_row[field_name]))
+
+                            record.prediction_result = predict_result({
+                                field_name: getattr(record, field_name)
+                                for field_name in model_fields
+                                if field_name not in ('prediction_result', 'created_at')
+                                and getattr(record, field_name) is not None
+                            })
+                            record.save()
+
+                            if is_new:
+                                created += 1
+                            else:
+                                updated += 1
+                        except Exception as row_exc:
+                            skipped += 1
+                            import_errors.append(f'Row {row_number}: {row_exc}')
+
+                    import_message = f'CSV import complete: {created} created, {updated} updated, {skipped} skipped.'
+                except Exception as exc:
+                    import_errors.append(str(exc))
+
+        elif request.POST.get('delete_selected') is not None:
+            selected_ids = request.POST.getlist('selected_ids')
+            if not selected_ids:
+                delete_errors.append('No records selected for deletion.')
+            else:
+                deleted_count = 0
+                for index, id_value in enumerate(selected_ids, start=1):
+                    try:
+                        record = CustomerPrediction.objects.get(pk=int(id_value))
+                        record.delete()
+                        deleted_count += 1
+                    except Exception as exc:
+                        delete_errors.append(f'Selected row {index} (id={id_value}): {exc}')
+                delete_message = f'{deleted_count} selected record(s) deleted.'
+
     predictions = CustomerPrediction.objects.all().order_by('-created_at')
-    return render(request, 'marketing/dashboard.html', {'predictions': predictions})
+    return render(request, 'marketing/dashboard.html', {
+        'predictions': predictions,
+        'import_message': import_message,
+        'import_errors': import_errors,
+        'delete_message': delete_message,
+        'delete_errors': delete_errors,
+    })
 
 def predict_view(request, pk=None):
     """Handles BOTH adding new predictions and editing existing ones."""
